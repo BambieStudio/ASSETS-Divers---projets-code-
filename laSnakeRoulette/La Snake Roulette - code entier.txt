@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snake Circle — La Roulette & Votre Spectacle</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0a;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    font-family: 'Cinzel', serif;
+    overflow-x: hidden;
+    color: #f4df92;
+  }
+
+  .page-frame {
+    width: 100%;
+    max-width: 480px;
+    min-height: 100vh;
+    background: #0d0d0d;
+    border-left: 2px solid #8a6a1a;
+    border-right: 2px solid #8a6a1a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 20px 80px;
+    position: relative;
+  }
+  .page-frame::before, .page-frame::after {
+    content: '';
+    position: absolute;
+    left: 6px; right: 6px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #c9a030, #f0d870, #c9a030, transparent);
+  }
+  .page-frame::before { top: 6px; }
+  .page-frame::after  { bottom: 6px; }
+
+  #rouletteView { display: flex; flex-direction: column; align-items: center; width: 100%; }
+  #spectacleView { display: none; flex-direction: column; width: 100%; min-height: 100vh; }
+  #spectacleView.active { display: flex; }
+
+  /* ===== ROULETTE STYLES ===== */
+  .title-wrap {
+    width: 100%;
+    max-width: 400px;
+    margin-bottom: -40px;
+  }
+  .title-wrap img {
+    width: 100%;
+    display: block;
+    filter: drop-shadow(0 0 20px rgba(200,160,48,0.5));
+  }
+
+  .wheel-scene {
+    position: relative;
+    width: 320px;
+    height: 360px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    margin-bottom: 22px;
+  }
+
+  #wheelImg {
+    position: absolute;
+    bottom: -30px;
+    left: 50%;
+    width: 400px;
+    height: 370px;
+    object-fit: contain;
+    filter: drop-shadow(0 12px 60px rgba(0,0,0,0.6));
+  }
+
+  .arrow-img {
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    z-index: 10;
+    filter: drop-shadow(0 20px 40px rgba(0,0,0,0.9));
+  }
+
+  .btn-tourner {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.15s ease, filter 0.15s ease;
+    width: 150px;
+  }
+  .btn-tourner img {
+    width: 100%;
+    display: block;
+    filter: drop-shadow(0 4px 14px rgba(0,0,0,0.5));
+  }
+  .btn-tourner:hover  { transform: scale(1.04); filter: brightness(1.1); }
+  .btn-tourner:active { transform: scale(0.97); }
+  .btn-tourner:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.88);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+  }
+  .overlay.visible {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .popup {
+    width: 90%;
+    max-width: 360px;
+    background: #0d0d0d;
+    border: 1px solid #8a6a1a;
+    border-radius: 4px;
+    padding: 28px 24px 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    transform: translateY(30px) scale(0.95);
+    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 0 60px rgba(200,160,48,0.12), 0 20px 60px rgba(0,0,0,0.8);
+  }
+  .overlay.visible .popup {
+    transform: translateY(0) scale(1);
+  }
+  .popup::before, .popup::after {
+    content: '';
+    position: absolute;
+    left: 8px; right: 8px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #c9a030, transparent);
+  }
+  .popup::before { top: 8px; }
+  .popup::after  { bottom: 8px; }
+
+  .snake-logo {
+    width: 180px;
+    margin-bottom: -50px;
+    filter: drop-shadow(0 0 12px rgba(200,160,48,0.4));
+  }
+  
+  .snake-confirm{
+  margin-bottom: 18px;
+  width: 100%;
+}
+
+  .popup-label {
+    font-family: 'Cinzel', serif;
+    color: #c8b070;
+    font-size: 14px;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+
+  .spectacle-img {
+    width: 100%;
+    max-width: 500px;
+    margin: 15px auto;
+    filter: drop-shadow(0 6px 20px rgba(0,0,0,0.6));
+    object-fit: cover;
+  }
+
+  @keyframes floatIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .btn-voir {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    width: 200px;
+    transition: transform 0.15s ease, filter 0.15s ease;
+    margin-top: 4px;
+  }
+  .btn-voir img { width: 100%; display: block; }
+  .btn-voir:hover { transform: scale(1.04); filter: brightness(1.1); }
+  .btn-voir:active { transform: scale(0.97); }
+
+  .popup-close {
+    position: absolute;
+    top: 14px; right: 16px;
+    background: none;
+    border: none;
+    color: #8a6a1a;
+    font-size: 20px;
+    cursor: pointer;
+    line-height: 1;
+    transition: color 0.2s;
+  }
+  .popup-close:hover { color: #f0d870; }
+
+  /* ===== SPECTACLE PAGE STYLES ===== */
+  .banner{
+    width:100%;
+    height:260px;
+    position:relative;
+    overflow:hidden;
+  }
+  .banner img{
+    width:100%; height:100%;
+    object-fit:cover;
+    filter:brightness(.75);
+  }
+  .banner::after{
+    content:'';
+    position:absolute; inset:0;
+    background:linear-gradient(to top,#000 10%,rgba(0,0,0,0.05) 100%);
+  }
+  .banner-label{
+    position:absolute; bottom:24px; left:0; right:0;
+    text-align:center; z-index:2;
+    font-family:'Cinzel Decorative',serif;
+    font-size:11px; letter-spacing:5px;
+    color:#c9a030; text-transform:uppercase;
+  }
+
+  .intro{ text-align:center; padding:32px 24px 8px; }
+  .intro h1{
+    font-family:'Cinzel Decorative',serif;
+    font-size:22px; color:#f5de8c;
+    margin-bottom:10px; line-height:1.3;
+  }
+  .intro p{
+    color:#9a844a; font-size:12px;
+    letter-spacing:2px; text-transform:uppercase;
+  }
+
+  .sections-wrap{
+    padding:36px 0 20px;
+    display:flex; flex-direction:column; gap:60px;
+  }
+
+  .show-block{
+    opacity:0;
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+  .show-block.from-left { transform:translateX(-60px); }
+  .show-block.from-right{ transform:translateX(60px); }
+  .show-block.visible   { opacity:1; transform:translateX(0); }
+
+  .block-label{
+    font-size:10px; letter-spacing:4px;
+    text-transform:uppercase; color:#e6be7a;
+    margin-bottom:14px; padding:0 20px;
+  }
+  .from-right .block-label{ text-align:right; }
+
+  .block-row{
+    display:flex;
+    align-items:flex-end;
+    padding:0 14px;
+  }
+  .from-left  .block-row{ flex-direction:row; }
+  .from-right .block-row{ flex-direction:row-reverse; }
+
+.character-wrap{
+  flex:1.45;
+  min-width:0;
+  position:relative;
+  height:250px;     
+  overflow:hidden;
+}
+  
+.character-wrap img{
+  width:100%;
+  height:100%;
+  min-height:260px;
+
+  object-fit:cover;
+  object-position:center;
+
+  border:1px solid rgba(201,160,48,0.25);
+
+  box-shadow:
+    0 10px 35px rgba(0,0,0,0.6);
+
+  transition:opacity .35s ease;
+}
+
+.card{
+  flex: 0.95;
+  min-height:auto;
+  padding:18px 16px;
+  justify-content:center;
+
+  background:#101010;
+  border:1px solid rgba(201,160,48,0.28);
+  position:relative;
+  overflow:hidden;
+
+  box-shadow:
+    0 0 22px rgba(201,160,48,0.05),
+    0 12px 35px rgba(0,0,0,0.65);
+}
+
+.card::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255,255,255,0.03),
+      transparent 35%
+    );
+}
+
+  .carousel{ flex:1; overflow:hidden; }
+  .carousel-track{
+    display:flex;
+    transition:transform .55s cubic-bezier(.77,0,.18,1);
+  }
+  .slide{ min-width:100%; }
+
+  .section-tag{
+    color:#7a6030; text-transform:uppercase;
+    font-size:9px; letter-spacing:4px; margin-bottom:8px;
+  }
+  
+.slide-title{
+  font-size:17px;
+  line-height:1.15;
+  margin-bottom:10px;
+
+  color:#f0d98a;
+  font-family:'Cinzel Decorative', serif;
+}
+.slide-desc{
+  color:#d5c28c;
+  font-size:11px;
+  line-height:1.6;
+}
+
+  .nav{
+    display:flex; align-items:center;
+    gap:8px; margin-top:14px; flex-shrink:0;
+  }
+
+  .arrow{
+    width:30px; height:30px; border-radius:50%;
+    border:1px solid rgba(201,157,55,.4);
+    background:#0c0c0c; color:#f4df92;
+    font-size:17px; cursor:pointer;
+    transition:.25s; display:flex;
+    align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .arrow:hover{ background:#1a1508; border-color:rgba(201,157,55,.8); }
+
+  .block-footer{
+    display:flex;
+    justify-content:flex-end;
+    padding:10px 14px 0;
+  }
+  .btn-choisir{
+    background:none;
+    border:1px solid rgba(201,157,55,.35);
+    color:#c9a030; font-family:'Cinzel',serif;
+    font-size:11px; letter-spacing:3px;
+    text-transform:uppercase; padding:8px 16px;
+    cursor:pointer; transition:.25s;
+    white-space:nowrap;
+  }
+  .btn-choisir:hover{ background:rgba(201,157,55,.1); border-color:#c9a030; color:#f4df92; }
+  .btn-choisir.chosen{
+    border-color:#3a6a2a; color:#6ecf58;
+    cursor:default; pointer-events:none;
+  }
+
+  .separator{
+    margin:40px 24px 0;
+    display:flex; align-items:center; gap:12px;
+  }
+  .sep-line{
+    flex:1; height:1px;
+    background:linear-gradient(90deg,transparent,rgba(201,157,55,.5),transparent);
+  }
+  .sep-center{ font-size:9px; letter-spacing:4px; color:#5a4515; white-space:nowrap; }
+
+  /* PANIER FLOTTANT */
+  #basket{
+    position:fixed;
+    bottom:0; left:50%;
+    width:100%; max-width:480px;
+    background:#080600;
+    border-top:1px solid rgba(201,157,55,.5);
+    padding:14px 18px 18px;
+    z-index:200;
+    transform:translateX(-50%) translateY(100%);
+    opacity:0;
+    transition: transform 0.5s cubic-bezier(.34,1.4,.64,1), opacity 0.4s ease;
+  }
+  #basket.active{
+    transform:translateX(-50%) translateY(0);
+    opacity:1;
+  }
+  .basket-title{
+    font-size:9px; letter-spacing:4px;
+    text-transform:uppercase; color:#5a4020;
+    margin-bottom:10px; display:flex; align-items:center; gap:8px;
+  }
+  .basket-title::after{
+    content:''; flex:1; height:1px;
+    background:linear-gradient(90deg,rgba(201,157,55,.4),transparent);
+  }
+  .basket-items{
+    display:flex; gap:8px; flex-wrap:wrap;
+    margin-bottom:12px; min-height:30px; align-items:center;
+  }
+  .basket-tag{
+    background:rgba(201,157,55,.08);
+    border:1px solid rgba(201,157,55,.35);
+    padding:5px 10px; font-size:9px;
+    letter-spacing:2px; color:#c9a030;
+    text-transform:uppercase;
+    display:flex; align-items:center; gap:7px;
+    animation: tagIn 0.4s cubic-bezier(.34,1.4,.64,1) forwards;
+  }
+  @keyframes tagIn{
+    from{ opacity:0; transform:scale(0.8); }
+    to{   opacity:1; transform:scale(1); }
+  }
+  .remove-tag{
+    cursor:pointer; color:#4a3010;
+    font-size:11px; transition:.2s; line-height:1;
+  }
+  .remove-tag:hover{ color:#c9a030; }
+  .basket-empty{ font-size:10px; color:#2a1a00; letter-spacing:2px; }
+  .basket-cta-row{
+    display:flex; align-items:center;
+    justify-content:space-between; gap:10px;
+  }
+  .basket-count{ font-size:9px; color:#4a3510; letter-spacing:2px; }
+  .basket-cta{
+    background:linear-gradient(180deg,#c9a030,#7a4a0a);
+    border:none; color:#0b0b0b;
+    font-family:'Cinzel Decorative',serif;
+    font-size:10px; padding:10px 18px;
+    cursor:pointer; letter-spacing:1px; transition:.25s;
+  }
+  .basket-cta:disabled{
+    opacity:.25; cursor:default;
+    background:#2a1a00; color:#4a3010;
+  }
+  .basket-cta:not(:disabled):hover{ filter:brightness(1.1); }
+
+  /* POPUP OVERLAY */
+  .popup-overlay{
+    position:fixed; inset:0;
+    background:rgba(0,0,0,.92);
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none;
+    transition:.4s; z-index:999;
+  }
+  .popup-overlay.active{ opacity:1; pointer-events:auto; }
+
+  .popup-dev{
+    width:90%; max-width:360px;
+    background:#070500;
+    border:1px solid #8a5f14;
+    padding:30px 22px 26px;
+    transform:translateY(30px) scale(.95);
+    transition:.45s cubic-bezier(.34,1.56,.64,1);
+    box-shadow:0 0 40px rgba(201,157,55,.1),0 20px 50px rgba(0,0,0,.9);
+    position:relative;
+    max-height:90vh;
+    overflow-y:auto;
+  }
+  .popup-overlay.active .popup-dev{ transform:translateY(0) scale(1); }
+
+  .popup-close-dev{
+    position:absolute; top:13px; right:15px;
+    background:none; border:none;
+    color:#5a4020; font-size:17px;
+    cursor:pointer; transition:.2s; line-height:1;
+  }
+  .popup-close-dev:hover{ color:#c9a030; }
+
+  .devis-banner{
+    width:calc(100% + 44px);
+    margin:-30px -22px 22px;
+    height:160px;
+    overflow:hidden;
+    position:relative;
+    background:#0f0a00;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .devis-banner img{
+    width:100%; height:100%;
+    object-fit:cover;
+    filter:brightness(.8);
+  }
+  .devis-banner-placeholder{
+    width:100%; height:100%;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    gap:8px; border:1px dashed rgba(201,157,55,.2);
+  }
+  .devis-banner-placeholder span{
+    font-size:9px; letter-spacing:3px;
+    text-transform:uppercase; color:#3a2a08;
+  }
+  .devis-title{
+    font-family:'Cinzel Decorative',serif;
+    font-size:17px; color:#f5de8c; margin-bottom:14px;
+  }
+  .sep-devis{
+    height:1px;
+    background:linear-gradient(90deg,transparent,rgba(201,157,55,.35),transparent);
+    margin:0 0 16px;
+  }
+
+  .form{ display:flex; flex-direction:column; gap:11px; }
+  .form input,
+  .form textarea{
+    background:#080600;
+    border:1px solid rgba(201,157,55,.25);
+    padding:12px 13px; color:#f4df92;
+    outline:none; font-family:'Cinzel',serif;
+    font-size:11px; transition:border-color .25s;
+  }
+  .form input:focus,
+  .form textarea:focus{ border-color:rgba(201,157,55,.6); }
+  .form textarea{ min-height:80px; resize:none; }
+  .form input::placeholder,
+  .form textarea::placeholder{ color:#3a2a08; }
+  .send-btn{
+    border:none; padding:13px;
+    background:linear-gradient(180deg,#c9a030,#7a4a0a);
+    color:#0b0b0b; font-size:11px;
+    font-family:'Cinzel Decorative',serif;
+    cursor:pointer; transition:.25s; letter-spacing:1px;
+  }
+  .send-btn:hover{ filter:brightness(1.1); }
+
+  #popupConfirm .popup-dev{ text-align:center; }
+  #popupConfirm h2{
+    font-family:'Cinzel Decorative',serif;
+    font-size:17px; margin-bottom:14px; color:#f5de8c;
+  }
+  #popupConfirm p{ color:#9a7a40; line-height:1.9; font-size:12px; }
+  .close-confirm{
+    margin-top:22px;
+    background:none; border:1px solid rgba(201,157,55,.4);
+    color:#f4df92; padding:10px 22px;
+    cursor:pointer; font-family:'Cinzel',serif;
+    font-size:11px; transition:.2s; display:inline-block;
+  }
+  .close-confirm:hover{ border-color:#c9a030; }
+
+  
+  .devis-selection-preview{
+  display:flex;
+  gap:10px;
+  margin-bottom:18px;
+}
+
+.devis-choice{
+  flex:1;
+  position:relative;
+  overflow:hidden;
+  border:1px solid rgba(201,157,55,.25);
+  height:90px;
+}
+
+.devis-choice img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+
+.devis-choice span{
+  position:absolute;
+  bottom:0;
+  left:0;
+  right:0;
+  background:rgba(0,0,0,.75);
+  color:#f4df92;
+  font-size:8px;
+  letter-spacing:1px;
+  text-transform:uppercase;
+  padding:4px;
+  text-align:center;
+}
+  
+  
+/* PAILLETTES DE FIN youpi */
+.gold-sparkle{
+  position:fixed;
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  pointer-events:none;
+  z-index:9999;
+
+  background:
+    radial-gradient(circle,
+      #fff7e0 0%,
+      #f3d98a 35%,
+      #d4af37 70%,
+      transparent 100%);
+
+  animation:sparkleFall 2500ms linear forwards;
+  box-shadow:
+    0 0 8px rgba(240,216,112,.6),
+    0 0 16px rgba(201,160,48,.25);
+}
+
+@keyframes sparkleFall{
+  0%{
+    opacity:0;
+    transform:
+      translateY(-10px)
+      translateX(0)
+      scale(.8)
+      rotate(0deg);
+  }
+
+  10%{
+    opacity:1;
+  }
+
+  100%{
+    opacity:0;
+    transform:
+      translateY(var(--y, 300px))
+      translateX(var(--x, 0px))
+      scale(.9)
+      rotate(120deg);
+  }
+}
+
+/* =========================
+   RESPONSIVE pliz
+========================= */
+
+/* Tablette */
+@media (max-width: 900px) {
+
+  .page-frame {
+    padding: 22px 14px 120px;
+  }
+
+  .wheel-scene {
+    transform: scale(0.95);
+  }
+
+  .sections-wrap {
+    gap: 45px;
+  }
+
+  .character-wrap {
+    height: 220px;
+  }
+
+  .card {
+    padding: 14px 12px;
+  }
+
+  .slide-title {
+    font-size: 15px;
+  }
+
+  .slide-desc {
+    font-size: 10px;
+  }
+}
+
+
+/* =========================
+   MOBILE 
+========================= */
+@media (max-width: 600px) {
+
+  /* STACK vertical des blocs */
+  .block-row {
+    flex-direction: column !important;
+    align-items: center;
+    gap: 14px;
+    padding: 0 10px;
+   transition: all 0.3s ease;
+  }
+
+  .character-wrap {
+    width: 100%;
+    height: 200px;
+    flex: unset;
+  }
+
+  .character-wrap img {
+    min-height: 200px;
+  }
+
+  .card {
+    width: 100%;
+    flex: unset;
+    padding: 14px;
+  }
+
+  /* carousel + texte plus compact */
+  .slide-title {
+    font-size: 14px;
+  }
+
+  .slide-desc {
+    font-size: 10px;
+    line-height: 1.5;
+  }
+
+  .section-tag {
+    font-size: 8px;
+    letter-spacing: 3px;
+  }
+
+  /* navigation plus petite */
+  .arrow {
+    width: 36px;
+    height: 36px;
+    font-size: 15px;
+  }
+
+  /* boutons choix */
+  .btn-choisir {
+    font-size: 11px;
+    padding: 7px 14px;
+  }
+
+  /* séparation */
+  .separator {
+    margin: 30px 16px 0;
+  }
+
+  .sep-center {
+    font-size: 8px;
+    letter-spacing: 3px;
+  }
+}
+
+
+/* =========================
+   TRÈS PETITS ÉCRANS
+========================= */
+@media (max-width: 380px) {
+
+  .character-wrap {
+    height: 170px;
+  }
+
+  .slide-title {
+    font-size: 13px;
+  }
+
+  .slide-desc {
+    font-size: 9px;
+  }
+
+  .btn-choisir {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+</style>
+</head>
+<body>
+
+<!-- ============= VUE ROULETTE ============= -->
+<div id="rouletteView" class="page-frame">
+  <div class="title-wrap">
+    <img src="https://github.com/BambieStudio/ASSETS-Divers---projets-code-/blob/main/laSnakeRoulette/titreEtSousTitreTransp.png?raw=true" alt="La Snake Roulette">
+  </div>
+
+  <div class="wheel-scene">
+    <img class="arrow-img"
+      src="https://github.com/BambieStudio/ASSETS-Divers---projets-code-/blob/main/laSnakeRoulette/fleche1.png?raw=true"
+      alt="Pointeur">
+    <img id="wheelImg"
+      src="https://github.com/BambieStudio/ASSETS-Divers---projets-code-/blob/main/laSnakeRoulette/roue2.png?raw=true"
+      alt="Roue de la fortune">
+  </div>
+
+  <button class="btn-tourner" id="spinBtn">
+    <img src="https://github.com/BambieStudio/ASSETS-Divers---projets-code-/blob/main/laSnakeRoulette/btnTourner.png?raw=true" alt="Tourner">
+  </button>
+      
+</div>
+
+<!-- ============= VUE SPECTACLE/DEVIS ============= -->
+<div id="spectacleView" class="page-frame">
+  <div class="banner">
+    <img id="bannerImg" src="" alt="Spectacle">
+    <div class="banner-label" id="bannerLabel">Votre spectacle sur mesure</div>
+  </div>
+
+  <div class="intro">
+    <h1 id="introTitle">Composez<br>votre soirée</h1>
+    <p id="introSub">Choisissez chaque élément</p>
+  </div>
+
+  <div class="sections-wrap">
+    <!-- PERFORMER -->
+    <div class="show-block from-left" data-section="performer">
+      <div class="block-label">01 — Performer</div>
+      <div class="block-row">
+        <div class="character-wrap">
+          <img class="char-img" src="" alt="performer">
+        </div>
+        <div class="card">
+          <div class="carousel">
+            <div class="carousel-track" id="track-performer"></div>
+          </div>
+          <div class="nav">
+            <button class="arrow prev">❮</button>
+            <button class="arrow next">❯</button>
+          </div>
+        </div>
+      </div>
+      <div class="block-footer">
+        <button class="btn-choisir" data-section="performer">Choisir</button>
+      </div>
+    </div>
+
+    <!-- BUFFET -->
+    <div class="show-block from-right" data-section="buffet">
+      <div class="block-label">02 — Buffet</div>
+      <div class="block-row">
+        <div class="character-wrap">
+          <img class="char-img" src="" alt="buffet">
+        </div>
+        <div class="card">
+          <div class="carousel">
+            <div class="carousel-track" id="track-buffet"></div>
+          </div>
+          <div class="nav">
+            <button class="arrow prev">❮</button>
+            <button class="arrow next">❯</button>
+          </div>
+        </div>
+      </div>
+      <div class="block-footer">
+        <button class="btn-choisir" data-section="buffet">Choisir</button>
+      </div>
+    </div>
+
+    <!-- DECORATION -->
+    <div class="show-block from-left" data-section="decoration">
+      <div class="block-label">03 — Décoration</div>
+      <div class="block-row">
+        <div class="character-wrap">
+          <img class="char-img" src="" alt="décoration">
+        </div>
+        <div class="card">
+          <div class="carousel">
+            <div class="carousel-track" id="track-decoration"></div>
+          </div>
+          <div class="nav">
+            <button class="arrow prev">❮</button>
+            <button class="arrow next">❯</button>
+          </div>
+        </div>
+      </div>
+      <div class="block-footer">
+        <button class="btn-choisir" data-section="decoration">Choisir</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="separator">
+    <div class="sep-line"></div>
+    <div class="sep-center">◆ SNAKE CIRCLE ◆</div>
+    <div class="sep-line"></div>
+  </div>
+</div>
+
+<!-- ============= POPUP RÉSULTAT ROULETTE ============= -->
+<div class="overlay" id="overlay">
+  <div class="popup">
+    <button class="popup-close" id="closeBtn">✕</button>
+    <img class="snake-logo"
+      src="https://github.com/BambieStudio/ASSETS-Divers---projets-code-/blob/main/laSnakeRoulette/logoSnakeRoulette.png?raw=true"
+      alt="Logo Snake Roulette">
+    <div style="margin: 4px 0 10px; font-size:10px; color:#c9a030;">◆ ❋ ◆</div>
+    <p class="popup-label">Le serpent a choisi</p>
+    <img id="spectacleImg" class="spectacle-img" src="" alt="Spectacle choisi">
+    <button class="btn-voir" id="btnVoir">
+      <img src="https://github.com/BambieStudio/ASSETS-Divers---projets-code-/blob/main/laSnakeRoulette/btnVoirMonSpectacle%20(2).png?raw=true" alt="Voir Mon Spectacle">
+    </button>
+  </div>
+</div>
+
+<!-- ============= PANIER FLOTTANT ============= -->
+<div id="basket">
+  <div class="basket-title">Ma sélection</div>
+  <div class="basket-items" id="basketItems">
+    <span class="basket-empty">Aucun choix pour l'instant</span>
+  </div>
+  <div class="basket-cta-row">
+    <span class="basket-count" id="basketCount">0 / 3 éléments</span>
+    <button class="basket-cta" id="basketCta" disabled>Envoyer ma demande →</button>
+  </div>
+</div>
+
+<!-- ============= POPUP DEVIS ============= -->
+<div class="popup-overlay" id="popupDevis">
+  <div class="popup-dev">
+    <button class="popup-close-dev" id="closeDevis">✕</button>
+<div class="devis-banner">
+  <img id="devisBannerImg" src="" alt="Thème spectacle">
+</div>
+
+<div class="devis-selection-preview" id="devisSelectionPreview"></div>
+    <div class="devis-title">Votre soirée prends forme...</div>
+    <div class="sep-devis"></div>
+    <form class="form" id="contactForm">
+      <input type="text" placeholder="Votre nom">
+      <input type="email" placeholder="Votre email">
+      <textarea placeholder="Informations complémentaires…"></textarea>
+      <button type="submit" class="send-btn">Envoyer ma demande</button>
+    </form>
+  </div>
+</div>
+
+<!-- ============= POPUP CONFIRMATION ============= -->
+<div class="popup-overlay" id="popupConfirm">
+  <div class="popup-dev">
+    <h2>Votre Spectacle est créé</h2>
+    <img class="snake-confirm" src='https://github.com/BambieStudio/ASSETS-Divers---projets-code-/blob/main/laSnakeRoulette/snakeAtWork.png?raw=true'>
+    <p class="intro p" style="color: #f0df97;">
+      Snake Circle a bien reçu votre création<br>
+      Nous préparons votre devis sur mesure<br>
+      <div style="margin: 4px 0 10px; font-size:10px; color:#c9a030;">◆</div>
+      À très vite !
+    </p>
+    <button class="close-confirm" id="closeConfirm">Fermer</button>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════
+   DONNÉES DES 4 THÈMES
+══════════════════════════════════════════ */
+
+const THEMES = {
+  circus: {
+    titre: 'Cirque Mystique',
+    sous_titre: 'Un spectacle hors du temps',
+    banner: 'https://i.pinimg.com/736x/81/c6/fc/81c6fc6ecc7bd4d47ee8a8560f86727d.jpg',
+    performers: [
+      { nom: 'Cracheur de feu', desc: 'Une entrée spectaculaire entourée de flammes mystiques et d\'une énergie hypnotique qui embrase la salle.', img: 'https://i.pinimg.com/736x/ad/71/0b/ad710b753924be67ffe4db741a336a69.jpg' },
+      { nom: 'Magicien', desc: 'Illusions troublantes et tours de passe-passe secrets pour une ambiance envoûtante et mystérieuse.', img: 'https://i.pinimg.com/736x/b6/c3/13/b6c313231b85a06e8766bd56c2cc1b3b.jpg' },
+      { nom: 'Contorsionniste', desc: 'Un corps qui défie les lois de la physique — souplesse, grâce et performance à couper le souffle.', img: 'https://i.pinimg.com/736x/61/d1/cc/61d1cc5ba6603885fab8196c9e3d4b43.jpg' }
+    ],
+    buffets: [
+      { nom: 'Pop Corn', desc: 'Un stand de pop corn coloré et généreux, servi dans l\'esprit du cirque itinérant.', img: 'https://i.pinimg.com/736x/9c/be/bc/9cbebcf596716bcc6e9d7237254317b1.jpg' },
+      { nom: 'Fontaine en Chocolat', desc: 'Une fontaine de merveilles sucrées. Trempez de délicieux fruits dans une cascade de chocolat noir.', img: 'https://i.pinimg.com/736x/d8/ed/20/d8ed20fb96ad81899340b9e8dfa11ab2.jpg' },
+      { nom: 'Pièce montée de Macaron', desc: 'Un chef-d\'œuvre de pâtisserie trônant au centre de la table, symbole de gourmandise et de fête.', img: 'https://i.pinimg.com/736x/f5/01/9a/f5019ae196eef33d565174354669fe9f.jpg' }
+    ],
+    decos: [
+      { nom: 'Vintage', desc: 'Toiles rayées, bois vieilli et lumières chaudes — l\'âge d\'or du cirque ambulant réinventé avec élégance.', img: 'https://i.pinimg.com/736x/7d/43/30/7d4330012eb4106453aa43764c0b9c23.jpg' },
+      { nom: 'Effrayant', desc: 'Cirque noir et ombres dramatiques : une atmosphère de freak show envoûtante et troublante.', img: 'https://i.pinimg.com/736x/75/8d/4e/758d4ed2d5ee945224d0b9a101354d97.jpg' },
+      { nom: 'Élégant', desc: 'Velours, dorures et lustres — le grand cirque dans toute sa splendeur aristocratique.', img: 'https://i.pinimg.com/474x/65/af/a1/65afa1058817247dde48e073ae141c4c.jpg' }
+    ]
+  },
+  grece: {
+    titre: 'Grèce Antique',
+    sous_titre: 'L\'olympe vous accueille',
+    banner: 'https://i.pinimg.com/736x/b5/1e/b6/b51eb6a01e5320e13e7309da3b281da4.jpg',
+    performers: [
+      { nom: 'Combattant', desc: 'Force, puissance et art martial antique : une performance inspirée des jeux olympiques de l\'Antiquité.', img: 'https://i.pinimg.com/736x/f4/9e/28/f49e28007cc1675d715dc971c7a5e1a6.jpg' },
+      { nom: 'Statues vivantes', desc: 'Des corps sculptés comme des fresques vivantes, ornés de motifs antiques dans une performance visuelle unique.', img: 'https://i.pinimg.com/736x/9a/25/10/9a25104016840bc1e3e3dd034c6854b6.jpg' },
+      { nom: 'Harpiste', desc: 'Une voix céleste accompagnée des cordes de la harpe — la muse grecque s\'invite à votre table.', img: 'https://i.pinimg.com/736x/87/68/7e/87687e1023405949bc474237f3f90dcc.jpg' }
+    ],
+    buffets: [
+      { nom: 'Buffet grec traditionnel', desc: 'Mezze généreux, olives dorées, fromages fondants et viandes grillées dans la pure tradition hellénique.', img: 'https://i.pinimg.com/474x/7d/9c/6f/7d9c6f389f5b2e2f98d6f2a55248194a.jpg' },
+      { nom: 'Fruits de mer', desc: 'Poulpe, crevettes et poissons grillés aux herbes — les saveurs de la Méditerranée dans toute leur fraîcheur.', img: 'https://i.pinimg.com/474x/8d/61/9a/8d619a3feb315e8a0db9b22d1c0b14f1.jpg' },
+      { nom: 'Glaces & Sorbets', desc: 'Créations glacées aux fruits méditerranéens — une fin de festin fraîche, légère et délicate.', img: 'https://i.pinimg.com/736x/81/a9/f4/81a9f4daef09e06db2ae65616ba7ed5b.jpg' }
+    ],
+    decos: [
+      { nom: 'Forêt sacrée', desc: 'Lauriers, olivier et colonnes de pierre : une clairière divine où les dieux grecs se réunissent.', img: 'https://i.pinimg.com/736x/c6/24/72/c624724455176147660edeeda735eb7d.jpg' },
+      { nom: 'Place du Forum', desc: 'Colonnes blanches, fresques bleues et agora reconstituée — la cité des philosophes prend vie.', img: 'https://i.pinimg.com/736x/72/a1/54/72a15440cf9409e4386ff6643aa0d9eb.jpg' },
+      { nom: 'Monde sous-marin', desc: 'Les profondeurs de la mer Égée : Poséidon, coraux et lumières aquatiques pour une immersion totale.', img: 'https://i.pinimg.com/474x/44/71/7f/44717ffe9e844e05c4f60c41aa740c50.jpg' }
+    ]
+  },
+  orient: {
+    titre: 'Mystérieux Orient',
+    sous_titre: 'Mille et une nuits vous attendent',
+    banner: 'https://github.com/BambieStudio/ASSETS-Divers---projets-code-/blob/main/laSnakeRoulette/imgResultOrient.jpeg?raw=true',
+    performers: [
+      { nom: 'Charmeuse de serpent', desc: 'Une présence envoûtante mêlant grâce orientale, rituel sacré et danse du serpent hypnotique.', img: 'https://i.pinimg.com/474x/98/be/13/98be13088068c6502dcbadc614bfeab1.jpg' },
+      { nom: 'Voyante', desc: 'Boule de cristal, cartes du destin et prédictions mystérieuses dans une atmosphère de sanctuaire occulte.', img: 'https://i.pinimg.com/736x/5d/08/d7/5d08d726643537753d35d74ea4278423.jpg' },
+      { nom: 'Danseuse aux perroquets', desc: 'Plumes éclatantes, couleurs vives et danse orientale — une performance haute en couleurs venue d\'ailleurs.', img: 'https://i.pinimg.com/736x/7a/07/c3/7a07c3902bddbd23d4af7282672ab4ce.jpg' }
+    ],
+    buffets: [
+      { nom: 'Buffet Marocain', desc: 'Tajines parfumés, couscous royal et pains msemen — un festin royal aux épices précieuses du Maghreb.', img: 'https://i.pinimg.com/736x/5a/5a/04/5a5a0428e6af4eb5116dd2eb915a20da.jpg' },
+      { nom: 'Pâtisseries Orientales', desc: 'Baklavas dorés au miel, cornes de gazelle et loukoums délicats — un voyage sucré en Orient.', img: 'https://i.pinimg.com/736x/12/23/ee/1223ee0913040fbf934eee6a264c4c25.jpg' },
+      { nom: 'Thé verts', desc: 'Un assortiment de thé variés, d\'hibiscus et d\'épices — élégants, colorés et envoûtants.', img: 'https://i.pinimg.com/474x/0b/48/dc/0b48dc8a4b36b318d9f726604c85ca89.jpg' }
+    ],
+    decos: [
+      { nom: 'Mille et une nuits', desc: 'Lanternes dorées, voiles aériens et coussins brodés — la magie du conte oriental se déploie autour de vous.', img: 'https://i.pinimg.com/474x/e3/c4/47/e3c4472eaa43a68058debdb8c4b127b8.jpg' },
+      { nom: 'Égypte ancienne', desc: 'Colonnes hiéroglyphes, sphinx et or antique : le temple de Ramsès ressuscité pour votre soirée.', img: 'https://i.pinimg.com/474x/7d/79/b8/7d79b8b9a91a358ca86e8762b192d77f.jpg' },
+      { nom: 'Route de la Soie', desc: 'Paravents laqués, cerisiers en fleurs et encens — un sanctuaire asiatique raffiné et apaisant.', img: 'https://i.pinimg.com/736x/62/ab/a2/62aba265e6513d4bfdc0af5131b90284.jpg' }
+    ]
+  },
+  'annees-folles': {
+    titre: 'Les Années Folles',
+    sous_titre: 'Le jazz, l\'or et la fête',
+    banner: 'https://github.com/BambieStudio/ASSETS-Divers---projets-code-/blob/main/laSnakeRoulette/imgResultAnneFolles.jpg?raw=true',
+    performers: [
+      { nom: 'Danseuse burlesque', desc: 'Plumes, strass et coupe de champagne géante — une entrée glamour et décadente digne du Moulin Rouge.', img: 'https://i.pinimg.com/736x/70/ef/c3/70efc343873a906f52990da9dae87b95.jpg' },
+      { nom: 'Barman jongleur', desc: 'Shakers qui voltigent, cocktails flamboyants et show de mixologie — le bar devient scène de spectacle.', img: 'https://i.pinimg.com/736x/20/d2/65/20d2650be99868bdbfb656324bbb5653.jpg' },
+      { nom: 'Acrobate Aérien', desc: 'Une créature volante envoute vos convives perchés dans les hauteurs de la salle.', img: 'https://i.pinimg.com/736x/36/96/e7/3696e77432c918031b9eb4caead08071.jpg' }
+    ],
+    buffets: [
+      { nom: 'Bar à Wisky', desc: 'Une sélection de wkisy emblématiques des années 20.', img: 'https://i.pinimg.com/736x/86/ac/64/86ac64be3db939c5bdda3d8ada455395.jpg' },
+      { nom: 'Petits fours', desc: 'Mignardises élégantes, verrines raffinées et bouchées gourmandes à déguster debout, verre à la main.', img: 'https://i.pinimg.com/736x/1d/55/e5/1d55e5f6fb8f600e1a949f60d446baf8.jpg' },
+      { nom: 'Tour de champagne', desc: 'Une pyramide de coupes dorées et du champagne qui ruisselle — le symbole ultime de la fête et du luxe.', img: 'https://i.pinimg.com/736x/78/fd/ec/78fdec4d291e0d9ab0b7ca5d3a1da389.jpg' }
+    ],
+    decos: [
+      { nom: 'Gatsby le Magnifique', desc: 'Art déco flamboyant, plumes d\'autruche et or à profusion — la démesure sophistiquée de Daisy et Jay.', img: 'https://i.pinimg.com/474x/4b/9e/cc/4b9eccb5a7f64a88a04d20c00f2610f1.jpg' },
+      { nom: 'Peaky Blinders', desc: 'Tweed, briques industrielles et ambiance Birmingham années 20 — élégance sombre et mystère irlandais.', img: 'https://i.pinimg.com/474x/a9/ea/ea/a9eaea35bdf436bdd8160f83c21f347f.jpg' },
+      { nom: 'Moulin Rouge', desc: 'Rouge écarlate, miroirs, French cancan et cabaret parisien — la fête la plus célèbre de Montmartre.', img: 'https://i.pinimg.com/474x/e3/ca/af/e3caafb48961f9fdc94e9e1099549c2a.jpg' }
+    ]
+  }
+};
+
+/* ══════════════════════════════════════════
+   ROULETTE LOGIC
+══════════════════════════════════════════ */
+const TOTAL_SECTORS = 12;
+const SECTOR_ANGLE  = 360 / TOTAL_SECTORS;
+const SPECTACLES = [
+  { id: 'orient', img: 'https://i.pinimg.com/736x/53/58/f3/5358f37532db1ded08a84cb54ff38326.jpg', theme: 'orient' },
+  { id: 'grece', img: 'https://i.pinimg.com/474x/b5/1e/b6/b51eb6a01e5320e13e7309da3b281da4.jpg', theme: 'grece' },
+  { id: 'circus', img: 'https://i.pinimg.com/736x/81/c6/fc/81c6fc6ecc7bd4d47ee8a8560f86727d.jpg', theme: 'circus' },
+  { id: 'annees-folles', img: 'https://i.pinimg.com/736x/51/ad/82/51ad828e92351c524aa9ddf23183dea6.jpg', theme: 'annees-folles' }
+];
+
+function spectacleFromSector(sectorIndex) {
+  return SPECTACLES[sectorIndex % 4];
+}
+
+let currentAngle = 0;
+let spinning = false;
+let selectedTheme = null;
+
+const wheelImg     = document.getElementById('wheelImg');
+const spinBtn      = document.getElementById('spinBtn');
+const overlay      = document.getElementById('overlay');
+const closeBtn     = document.getElementById('closeBtn');
+const spectacleImg = document.getElementById('spectacleImg');
+const btnVoir      = document.getElementById('btnVoir');
+const rouletteView = document.getElementById('rouletteView');
+const spectacleView = document.getElementById('spectacleView');
+
+function setRotation(deg) {
+  wheelImg.style.transform = `translateX(-50%) rotate(${deg}deg)`;
+}
+
+function easeOut(t) { return 1 - Math.pow(1 - t, 4); }
+
+function spin() {
+  if (spinning) return;
+  spinning = true;
+  spinBtn.disabled = true;
+
+  const targetSector     = Math.floor(Math.random() * TOTAL_SECTORS);
+  const targetNormalized = targetSector * SECTOR_ANGLE + SECTOR_ANGLE / 2;
+  const currentNorm      = (((-currentAngle) % 360) + 360) % 360;
+  let delta = targetNormalized - currentNorm;
+  if (delta < 0) delta += 360;
+
+  const fullTurns     = (5 + Math.floor(Math.random() * 5)) * 360;
+  const totalRotation = fullTurns + delta;
+  const duration      = 4500 + Math.random() * 1500;
+  const startAngle    = currentAngle;
+  const startTime     = performance.now();
+
+  function animate(now) {
+    const elapsed = now - startTime;
+    const t = Math.min(elapsed / duration, 1);
+    currentAngle = startAngle + totalRotation * easeOut(t);
+    setRotation(currentAngle);
+    if (t < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      currentAngle = startAngle + totalRotation;
+      setRotation(currentAngle);
+      spinning = false;
+      spinBtn.disabled = false;
+      setTimeout(() => showResult(spectacleFromSector(targetSector)), 600);
+    }
+  }
+  requestAnimationFrame(animate);
+}
+
+function showResult(spectacle) {
+  selectedTheme = spectacle.theme;
+  spectacleImg.src = spectacle.img;
+  spectacleImg.alt = spectacle.id;
+  spectacleImg.style.animation = 'none';
+  spectacleImg.offsetHeight;
+  spectacleImg.style.animation = 'floatIn 0.6s ease forwards';
+  overlay.classList.add('visible');
+}
+
+function closePopup() { overlay.classList.remove('visible'); }
+
+/* ══════════════════════════════════════════
+   SPECTACLE PAGE LOGIC
+══════════════════════════════════════════ */
+function initSpectaclePage(themeKey) {
+  const theme = THEMES[themeKey] || THEMES['circus'];
+  
+  document.getElementById('bannerImg').src   = theme.banner;
+  document.getElementById('bannerLabel').textContent = theme.sous_titre.toUpperCase();
+  document.getElementById('introTitle').innerHTML    = theme.titre.replace(' ', '<br>');
+  document.getElementById('introSub').textContent    = 'Choisissez chaque élément';
+
+  function buildSlides(trackId, items, categoryLabel) {
+    const track = document.getElementById(trackId);
+    track.innerHTML = '';
+    items.forEach(item => {
+      const slide = document.createElement('div');
+      slide.className = 'slide';
+      slide.innerHTML = `
+        <div class="section-tag">${categoryLabel}</div>
+        <div class="slide-title">${item.nom}</div>
+        <div class="slide-desc">${item.desc}</div>
+      `;
+      track.appendChild(slide);
+    });
+  }
+
+  buildSlides('track-performer', theme.performers, 'Performer');
+  buildSlides('track-buffet',    theme.buffets,    'Buffet');
+  buildSlides('track-decoration',theme.decos,      'Décoration');
+
+  const sectionImgs = {
+    performer: theme.performers.map(p => p.img),
+    buffet:    theme.buffets.map(b => b.img),
+    decoration:theme.decos.map(d => d.img)
+  };
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.show-block').forEach(el => observer.observe(el));
+
+  const basket = {};
+
+  document.querySelectorAll('.show-block[data-section]').forEach(block => {
+    const section    = block.dataset.section;
+    const track      = block.querySelector('.carousel-track');
+    const charImg    = block.querySelector('.char-img');
+    const nextBtn    = block.querySelector('.arrow.next');
+    const prevBtn    = block.querySelector('.arrow.prev');
+    const choisirBtn = block.querySelector('.btn-choisir');
+    const images     = sectionImgs[section] || [];
+    let index = 0;
+    
+if(charImg && images.length){
+  charImg.src = images[0];
+}
+    function slidesCount(){ return track.querySelectorAll('.slide').length; }
+
+    function update(){
+      track.style.transform = `translateX(-${index * 100}%)`;
+      if(charImg && images[index]){
+        charImg.style.opacity = '0';
+        setTimeout(() => {
+          charImg.src = images[index];
+          charImg.style.opacity = '1';
+        }, 220);
+      }
+    }
+
+    nextBtn && nextBtn.addEventListener('click', () => {
+      index = (index + 1) % slidesCount(); update();
+    });
+    prevBtn && prevBtn.addEventListener('click', () => {
+      index = (index - 1 + slidesCount()) % slidesCount(); update();
+    });
+
+    choisirBtn && choisirBtn.addEventListener('click', () => {
+      if(choisirBtn.classList.contains('chosen')) return;
+      const titleEl = track.querySelectorAll('.slide')[index]?.querySelector('.slide-title');
+      const label   = titleEl ? titleEl.textContent.trim() : section;
+      choisirBtn.classList.add('chosen');
+      choisirBtn.textContent = '✓ Choisi';
+      basket[section] = {
+  label,
+  img: images[index]
+};
+      updateBasket();
+    });
+  });
+
+  function updateBasket(){
+    const keys     = Object.keys(basket);
+    const basketEl = document.getElementById('basket');
+    const itemsEl  = document.getElementById('basketItems');
+    const countEl  = document.getElementById('basketCount');
+    const ctaEl    = document.getElementById('basketCta');
+
+    if(keys.length === 0){ basketEl.classList.remove('active'); return; }
+    basketEl.classList.add('active');
+
+    itemsEl.innerHTML = '';
+    keys.forEach(key => {
+      const tag = document.createElement('span');
+      tag.className = 'basket-tag';
+      tag.innerHTML = `
+  ${basket[key].label}
+  <span class="remove-tag" data-key="${key}">✕</span>
+`;
+      itemsEl.appendChild(tag);
+    });
+
+    itemsEl.querySelectorAll('.remove-tag').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const k = btn.dataset.key;
+        delete basket[k];
+        const blk = document.querySelector(`.show-block[data-section="${k}"]`);
+        if(blk){
+          const ch = blk.querySelector('.btn-choisir');
+          if(ch){ ch.classList.remove('chosen'); ch.textContent = 'Choisir'; }
+        }
+        updateBasket();
+      });
+    });
+
+    countEl.textContent = `${keys.length} / 3 éléments`;
+    ctaEl.disabled = keys.length === 0;
+  }
+
+ document.getElementById('basketCta').addEventListener('click', () => {
+
+  // bannière du thème
+  document.getElementById('devisBannerImg').src = theme.banner;
+
+  // aperçu des choix
+  const preview = document.getElementById('devisSelectionPreview');
+  preview.innerHTML = '';
+
+  Object.entries(basket).forEach(([section, item]) => {
+    const div = document.createElement('div');
+    div.className = 'devis-choice';
+
+    div.innerHTML = `
+      <img src="${item.img}" alt="${item.label}">
+      <span>${item.label}</span>
+    `;
+
+    preview.appendChild(div);
+  });
+
+  document.getElementById('popupDevis').classList.add('active');
+});
+  document.getElementById('closeDevis').addEventListener('click', () => {
+    document.getElementById('popupDevis').classList.remove('active');
+  });
+  document.getElementById('popupDevis').addEventListener('click', e => {
+    if(e.target.id === 'popupDevis') document.getElementById('popupDevis').classList.remove('active');
+  });
+
+document.getElementById('contactForm').addEventListener('submit', e => {
+  e.preventDefault();
+
+  document.getElementById('popupDevis')
+    .classList.remove('active');
+
+  setTimeout(() => {
+
+    // ouverture popup
+    document.getElementById('popupConfirm')
+      .classList.add('active');
+
+    // ✨ 
+    launchGoldenSparkles();
+
+  }, 350);
+});
+  
+  
+  document.getElementById('closeConfirm').addEventListener('click', () => {
+    document.getElementById('popupConfirm').classList.remove('active');
+  });
+  document.getElementById('popupConfirm').addEventListener('click', e => {
+    if(e.target.id === 'popupConfirm') document.getElementById('popupConfirm').classList.remove('active');
+  });
+}
+
+/* ══════════════════════════════════════════
+   NAVIGATION : ROULETTE → SPECTACLE
+══════════════════════════════════════════ */
+btnVoir.addEventListener('click', () => {
+  closePopup();
+  if(selectedTheme) {
+    rouletteView.style.display = 'none';
+    spectacleView.classList.add('active');
+    initSpectaclePage(selectedTheme);
+  }
+});
+
+closeBtn.addEventListener('click', closePopup);
+overlay.addEventListener('click', (e) => { if (e.target === overlay) closePopup(); });
+
+/* Paillettes de fin à la commande */
+function launchGoldenSparkles() {
+
+  const amount = 45;
+
+  for (let i = 0; i < amount; i++) {
+
+    const sparkle = document.createElement('div');
+    sparkle.className = 'gold-sparkle';
+
+    // spawn aléatoire en haut de l’écran (pluie)
+    const startX = Math.random() * window.innerWidth;
+    const startY = -20 - Math.random() * 100;
+
+    sparkle.style.left = `${startX}px`;
+    sparkle.style.top  = `${startY}px`;
+
+    // chute verticale dominante
+    const fallDistance = 300 + Math.random() * 500;
+    const drift = (Math.random() - 0.5) * 120; // léger vent gauche/droite
+
+    sparkle.style.setProperty('--x', `${drift}px`);
+    sparkle.style.setProperty('--y', `${fallDistance}px`);
+
+    // tailles variées mais petites (plus réaliste)
+    const size = 3 + Math.random() * 5;
+    sparkle.style.width = `${size}px`;
+    sparkle.style.height = `${size}px`;
+
+    // durée un peu plus fluide
+    sparkle.style.animationDuration =
+      `${1800 + Math.random() * 1500}ms`;
+
+    document.body.appendChild(sparkle);
+
+    setTimeout(() => sparkle.remove(), 4000);
+  }
+}
+  
+/* ══════════════════════════════════════════
+   INITIALISATION
+══════════════════════════════════════════ */
+setRotation(0);
+spinBtn.addEventListener('click', spin);
+
+const params = new URLSearchParams(window.location.search);
+const themeParam = params.get('theme');
+if(themeParam && THEMES[themeParam]) {
+  rouletteView.style.display = 'none';
+  spectacleView.classList.add('active');
+  initSpectaclePage(themeParam);
+}
+</script>
+</body>
+</html>
